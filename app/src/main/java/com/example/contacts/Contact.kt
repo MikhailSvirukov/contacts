@@ -1,6 +1,6 @@
 package com.example.contacts
 
-import android.content.Context
+import android.content.ContentResolver
 import android.provider.ContactsContract
 
 data class Contact(
@@ -8,10 +8,10 @@ data class Contact(
     val phoneNumber: List<String>,
 )
 
-fun getContacts(context: Context): List<Contact> {
+fun getContacts(contentResolver: ContentResolver): List<Contact> {
     val contacts = mutableListOf<Contact>()
 
-    val cursor = context.contentResolver.query(
+    val cursor = contentResolver.query(
         ContactsContract.Contacts.CONTENT_URI,
         null,
         null,
@@ -31,7 +31,7 @@ fun getContacts(context: Context): List<Contact> {
             val hasPhoneNumber = cursor.getInt(phoneNumber)
             val numbers = mutableListOf<String>()
             if (hasPhoneNumber == 1) {
-                context.contentResolver.query(
+                contentResolver.query(
                     ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                     arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
                     "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",

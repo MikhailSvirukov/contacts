@@ -1,8 +1,8 @@
 package com.example.contacts
 
 import android.Manifest
+import android.app.Application
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -23,11 +23,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -36,6 +44,14 @@ class MainActivity : ComponentActivity() {
             this,
             arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE),
             100
+        )
+    }
+
+    private fun makeCall(number: String) {
+        startActivity(
+            Intent(Intent.ACTION_CALL).apply {
+                data = Uri.parse("tel:$number")
+            }
         )
     }
 
@@ -52,12 +68,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun makeCall(number: String) {
-            startActivity(
-                Intent(Intent.ACTION_CALL).apply {
-                    data = Uri.parse("tel:$number")
-                }
-            )
+class AppViewModel(application: Application) : AndroidViewModel(application) {
+    private val _contacts = MutableStateFlow<List<Contact>>(emptyList())
+    val contacts: StateFlow<List<Contact>> = _contacts.asStateFlow()
+
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            _contacts.value = getContacts(getApplication<Application>().contentResolver)
+        }
     }
 }
 
@@ -125,7 +143,6 @@ fun CardList(
                 Text(
                     text = "Список контактов с телефона",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
@@ -137,10 +154,10 @@ fun CardList(
 }
 
 @Composable
-fun App(onNumberClick: (String) -> Unit) {
-    val context = LocalContext.current
-    val contacts = remember(context) {
-        getContacts(context)
-    }
-    CardList(cardList = contacts, onNumberClick = onNumberClick)
+fun App(viewModel: AppViewModel = viewModel(), onNumberClick: (String) -> Unit) {
+    val contacts by viewModel.contacts.collectAsState()
+    CardList(
+        cardList = contacts,
+        onNumberClick = onNumberClick
+    ) }
 }
