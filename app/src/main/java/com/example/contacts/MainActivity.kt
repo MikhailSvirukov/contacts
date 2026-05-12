@@ -1,13 +1,18 @@
 package com.example.contacts
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,25 +27,46 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 
 class MainActivity : ComponentActivity() {
 
+    private fun requestCallPermissions() {
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE),
+            100
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestCallPermissions()
         setContent {
             Surface(
                 modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.background
             ) {
-                App()
+                App(onNumberClick = ::makeCall)
             }
         }
+    }
+
+    private fun makeCall(number: String) {
+            startActivity(
+                Intent(Intent.ACTION_CALL).apply {
+                    data = Uri.parse("tel:$number")
+                }
+            )
     }
 }
 
 @Composable
-fun ContactCard(contact: Contact, modifier: Modifier = Modifier) {
+fun ContactCard(
+    contact: Contact,
+    onNumberClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -68,7 +94,9 @@ fun ContactCard(contact: Contact, modifier: Modifier = Modifier) {
                         text = number,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 6.dp),
+                        modifier = Modifier
+                            .padding(bottom = 6.dp)
+                            .clickable { onNumberClick(number) },
                     )
                 }
             }
@@ -77,7 +105,11 @@ fun ContactCard(contact: Contact, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun CardList(cardList: List<Contact>, modifier: Modifier = Modifier) {
+fun CardList(
+    cardList: List<Contact>,
+    onNumberClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -99,16 +131,16 @@ fun CardList(cardList: List<Contact>, modifier: Modifier = Modifier) {
             }
         }
         items(cardList) { contact ->
-            ContactCard(contact = contact)
+            ContactCard(contact = contact, onNumberClick = onNumberClick)
         }
     }
 }
 
 @Composable
-fun App() {
+fun App(onNumberClick: (String) -> Unit) {
     val context = LocalContext.current
     val contacts = remember(context) {
         getContacts(context)
     }
-    CardList(cardList = contacts)
+    CardList(cardList = contacts, onNumberClick = onNumberClick)
 }
