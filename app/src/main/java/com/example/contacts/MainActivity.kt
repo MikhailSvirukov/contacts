@@ -3,6 +3,7 @@ package com.example.contacts
 import android.Manifest
 import android.app.Application
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -38,37 +39,51 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-
-    private fun requestCallPermissions() {
+    private fun requestPermission(permission: String) {
         ActivityCompat.requestPermissions(
             this,
-            arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE),
-            100
+            arrayOf(permission),
+            100,
         )
     }
 
+    private fun checkPermission(permission: String): Boolean =
+        ActivityCompat.checkSelfPermission(
+            this,
+            permission,
+        ) == PackageManager.PERMISSION_GRANTED
+
     private fun makeCall(number: String) {
-        startActivity(
-            Intent(Intent.ACTION_CALL).apply {
-                data = Uri.parse("tel:$number")
-            }
-        )
+        if (!checkPermission(Manifest.permission.CALL_PHONE)) {
+            requestPermission(Manifest.permission.CALL_PHONE)
+        } else {
+            startActivity(
+                Intent(Intent.ACTION_CALL).apply {
+                    data = Uri.parse("tel:$number")
+                },
+            )
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestCallPermissions()
+        if (checkPermission(Manifest.permission.READ_CONTACTS)) {
+            requestPermission(Manifest.permission.READ_CONTACTS)
+        }
         setContent {
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
+                color = MaterialTheme.colorScheme.background,
             ) {
-                App(onNumberClick = ::makeCall)
+                app(onNumberClick = ::makeCall)
             }
         }
     }
+}
 
-class AppViewModel(application: Application) : AndroidViewModel(application) {
+class AppViewModel(
+    application: Application,
+) : AndroidViewModel(application) {
     private val _contacts = MutableStateFlow<List<Contact>>(emptyList())
     val contacts: StateFlow<List<Contact>> = _contacts.asStateFlow()
 
@@ -80,16 +95,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 }
 
 @Composable
-fun ContactCard(
+fun contactCard(
     contact: Contact,
     onNumberClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -112,9 +128,10 @@ fun ContactCard(
                         text = number,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .padding(bottom = 6.dp)
-                            .clickable { onNumberClick(number) },
+                        modifier =
+                            Modifier
+                                .padding(bottom = 6.dp)
+                                .clickable { onNumberClick(number) },
                     )
                 }
             }
@@ -123,7 +140,7 @@ fun ContactCard(
 }
 
 @Composable
-fun CardList(
+fun cardList(
     cardList: List<Contact>,
     onNumberClick: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -148,16 +165,19 @@ fun CardList(
             }
         }
         items(cardList) { contact ->
-            ContactCard(contact = contact, onNumberClick = onNumberClick)
+            contactCard(contact = contact, onNumberClick = onNumberClick)
         }
     }
 }
 
 @Composable
-fun App(viewModel: AppViewModel = viewModel(), onNumberClick: (String) -> Unit) {
+fun app(
+    viewModel: AppViewModel = viewModel(),
+    onNumberClick: (String) -> Unit,
+) {
     val contacts by viewModel.contacts.collectAsState()
-    CardList(
+    cardList(
         cardList = contacts,
-        onNumberClick = onNumberClick
-    ) }
+        onNumberClick = onNumberClick,
+    )
 }
