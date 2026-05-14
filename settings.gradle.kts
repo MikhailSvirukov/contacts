@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "TestApp"
 include(":app")
+include(":algo")
